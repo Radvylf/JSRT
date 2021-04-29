@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,600&display=swap">
+        
+        <style>
+            body {
+                margin: 8px;
+                padding: 0;
+                border: none;
+                
+                background-color: #121212;
+                color: #e0e0e0;
+                
+                font-family: "Roboto Mono", monospace;
+                font-size: 10px;
+                line-height: 12px;
+                
+                font-weight: 600;
+            }
+            
+            #terminal {
+                white-space: pre;
+            }
+        </style>
+        
+        <script>
+            JSRT = {
+                VERSION: "0.1.0",
+                terminal: null,
+                onload: null
+            };
+            
+            window.onload = function() {
+                var terminal = document.getElementById("terminal");
+                
+                JSRT.old_terminal = {
+                    print: function(print) {
+                        var scroll = window.scrollY > (document.body.scrollHeight - window.innerHeight - 24);
+                        
+                        terminal.textContent += print + "\n";
+                        
+                        if (scroll)
+                            window.scrollTo(0, document.body.scrollHeight);
+                    },
+                    write: function(write) {
+                        var scroll = window.scrollY > (document.body.scrollHeight - window.innerHeight - 24);
+                        
+                        terminal.textContent += write;
+                        
+                        if (scroll)
+                            window.scrollTo(0, document.body.scrollHeight);
+                    },
+                    backspace: function() {
+                        var text = terminal.textContent;
+                        
+                        terminal.textContent = text[text.length - 1] == "\n" ? text : text.slice(0, -1);
+                    },
+                    carriage_return: function() {
+                        var text = terminal.textContent;
+                        
+                        terminal.textContent = text.split("\n").slice(0, text[text.length - 1] == "\n" ? -2 : -1).join("\n") + "\n";
+                    },
+                    blank: function() {
+                        terminal.textContent = "";
+                    },
+                    title: function() {
+                        return document.title;
+                    },
+                    write_title: function(title) {
+                        document.title = title;
+                    },
+                    input_r: function(callback) {
+                        window.onkeydown = function(event) {
+                            if (event.ctrlKey || event.altKey || event.metaKey || event.key.length > 1)
+                                return;
+                            
+                            window.onkeydown = null;
+                            
+                            if (callback(event.key))
+                                event.preventDefault();
+                        };
+                    },
+                    input_d: function(callback) {
+                        window.onkeydown = function(event) {
+                            var utf32 = 0;
+                            
+                            window.onkeydown = null;
+                            
+                            utf32 = ({
+                                "Tab": 9,
+                                "Enter": 10,
+                                "ArrowDown": 17,
+                                "ArrowUp": 18,
+                                "ArrowLeft": 19,
+                                "ArrowRight": 20,
+                                "End": 3,
+                                "Home": 13,
+                                "PageDown": 12,
+                                "PageUp": 2,
+                                "Backspace": 8,
+                                "Delete": 127,
+                                "Escape": 27
+                            })[event.key] || 0;
+                            
+                            if (event.key.length == 1)
+                                utf32 = event.key.codePointAt();
+                            
+                            if (callback([utf32, (event.metaKey || 0) * 4 + event.altKey * 2 + event.ctrlKey]))
+                                event.preventDefault();
+                        };
+                    },
+                    input_p: function(callback) {
+                        var input = "";
+                        
+                        var d_callback = function(keystroke) {
+                            if (keystroke[0] == 10 && keystroke[1] == 0) {
+                                JSRT.old_terminal.write("\n");
+                                
+                                callback(input);
+                                
+                                return true;
+                            }
+                            
+                            JSRT.old_terminal.input_d(d_callback);
+                            
+                            if (keystroke[1] != 0)
+                                return false;
+                            
+                            if (keystroke[0] == 8) {
+                                if (input.length)
+                                    JSRT.old_terminal.backspace();
+                                
+                                input = input.slice(0, -1);
+                                
+                                return true;
+                            }
+                            
+                            if (keystroke[0] >= 32 && keystroke[0] != 127) {
+                                JSRT.old_terminal.write(String.fromCodePoint(keystroke[0]));
+                                
+                                input += String.fromCodePoint(keystroke[0]);
+                                
+                                return true;
+                            }
+                        };
+                        
+                        JSRT.old_terminal.input_d(d_callback);
+                    },
+                    store: function(name, data) {
+                        try {
+                            return localStorage.setItem(name, data);
+                        } catch (error) {
+                            return false;
+                        }
+                    },
+                    retrieve: function(name) {
+                        try {
+                            return localStorage.getItem(name);
+                        } catch (error) {
+                            return null;
+                        }
+                    }
+                };
+                
+                try {
+                    var clone;
+                    
+                    eval("clone = Object.fromEntries(Object.entries(JSRT.old_terminal).map(([k, f]) => [k, (...inputs) => f(...inputs)])); clone.input_r = () => new Promise(r => JSRT.old_terminal.input_r(r)); clone.input_d = () => new Promise(r => JSRT.old_terminal.input_d(r)); clone.input_p = () => new Promise(r => JSRT.old_terminal.input_p(r)); clone.wait = (ticks) => new Promise(r => setTimeout(r, ticks * 10))");
+                    
+                    JSRT.terminal = clone;
+                    
+                    console.log("Terminal: " + JSRT.VERSION);
+                } catch (error) {
+                    console.log("Terminal: " + JSRT.VERSION + ": old_terminal");
+                }
+                
+                if (JSRT.onload)
+                    JSRT.onload();
+            };
+        </script>
+        
+        <!-- Your JS files -->
+        
+        <script src="main.js"></script>
+    </head>
+    <body>
+        <div id="terminal"></div>
+    </body>
+</html>
